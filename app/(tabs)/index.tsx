@@ -7,10 +7,20 @@ import {
   Modal,
   View,
   ScrollView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { format } from "date-fns";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import {
+  format,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+} from "date-fns";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -42,6 +52,7 @@ export default function HomeScreen() {
   const [isUrgent, setIsUrgent] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
@@ -98,11 +109,17 @@ export default function HomeScreen() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
-  const onTimeChange = (_: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
-    if (selectedTime) {
+  const onTimeChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
+    setShowTimePicker(Platform.OS === "ios"); // Only hide on Android
+    if (event.type === "set" && selectedTime) {
       setDueTime(format(selectedTime, "HH:mm"));
     }
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    const start = startOfMonth(date);
+    const end = endOfMonth(date);
+    return eachDayOfInterval({ start, end });
   };
 
   const renderCalendar = () => (
@@ -125,32 +142,63 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Due Date Section */}
-            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
-              Due Date
-            </ThemedText>
+            {/* Month Navigation */}
+            <View className="flex-row justify-between items-center mb-4">
+              <TouchableOpacity
+                onPress={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                className="p-2"
+              >
+                <Ionicons name="chevron-back" size={24} color={textColor} />
+              </TouchableOpacity>
+              <ThemedText className="text-lg font-semibold dark:text-white">
+                {format(currentMonth, "MMMM yyyy")}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                className="p-2"
+              >
+                <Ionicons name="chevron-forward" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Weekday Headers */}
+            <View className="flex-row mb-2">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <View key={day} className="flex-1 items-center">
+                  <ThemedText className="text-sm text-gray-500 dark:text-gray-400">
+                    {day}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+
+            {/* Calendar Grid */}
             <View className="flex-row flex-wrap mb-6">
-              {Array.from({ length: 31 }, (_, i) => {
-                const date = new Date();
-                date.setDate(date.getDate() + i);
+              {getDaysInMonth(currentMonth).map((date, index) => {
+                const isSelected =
+                  selectedDate &&
+                  format(selectedDate, "yyyy-MM-dd") ===
+                    format(date, "yyyy-MM-dd");
+                const isToday =
+                  format(new Date(), "yyyy-MM-dd") ===
+                  format(date, "yyyy-MM-dd");
+
                 return (
                   <TouchableOpacity
-                    key={i}
+                    key={index}
                     onPress={() => setSelectedDate(date)}
-                    className={`w-[14.28%] p-2 items-center ${
-                      selectedDate &&
-                      selectedDate.toDateString() === date.toDateString()
-                        ? "bg-blue-500 rounded-full"
-                        : ""
-                    }`}
+                    className={`w-[14.28%] aspect-square items-center justify-center
+                      ${isSelected ? "bg-blue-500 rounded-full" : ""}
+                      ${
+                        isToday && !isSelected
+                          ? "border border-blue-500 rounded-full"
+                          : ""
+                      }`}
                   >
                     <ThemedText
-                      className={`${
-                        selectedDate &&
-                        selectedDate.toDateString() === date.toDateString()
-                          ? "text-white"
-                          : "dark:text-white"
-                      }`}
+                      className={`text-base
+                        ${isSelected ? "text-white" : "dark:text-white"}
+                        ${isToday && !isSelected ? "text-blue-500" : ""}`}
                     >
                       {format(date, "d")}
                     </ThemedText>
@@ -172,14 +220,35 @@ export default function HomeScreen() {
               </ThemedText>
             </TouchableOpacity>
 
-            {showTimePicker && (
-              <DateTimePicker
-                value={dueTime ? new Date(`2000-01-01T${dueTime}`) : new Date()}
-                mode="time"
-                is24Hour={true}
-                onChange={onTimeChange}
-              />
-            )}
+            {showTimePicker &&
+              (Platform.OS === "android" ? (
+                <DateTimePicker
+                  value={
+                    dueTime ? new Date(`2000-01-01T${dueTime}:00`) : new Date()
+                  }
+                  mode="time"
+                  is24Hour={true}
+                  onChange={onTimeChange}
+                  display="spinner"
+                />
+              ) : (
+                <View className="bg-white dark:bg-gray-800 p-4 rounded-lg">
+                  <DateTimePicker
+                    value={
+                      dueTime
+                        ? new Date(`2000-01-01T${dueTime}:00`)
+                        : new Date()
+                    }
+                    mode="time"
+                    is24Hour={true}
+                    onChange={onTimeChange}
+                    display="spinner"
+                    themeVariant={
+                      backgroundColor === "#000000" ? "dark" : "light"
+                    }
+                  />
+                </View>
+              ))}
 
             {/* Urgent Checkbox */}
             <TouchableOpacity
