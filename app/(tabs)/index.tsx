@@ -1,11 +1,11 @@
 import { StyleSheet } from "react-native";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TextInput, FlatList, TouchableOpacity } from "react-native";
-import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 
 interface Todo {
@@ -21,6 +21,14 @@ export default function HomeScreen() {
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
   const backgroundColor = useThemeColor({}, "background");
+
+  // Sort todos with completed items at the bottom
+  const sortedTodos = useMemo(() => {
+    return [...todos].sort((a, b) => {
+      if (a.completed === b.completed) return 0;
+      return a.completed ? 1 : -1;
+    });
+  }, [todos]);
 
   const addTodo = () => {
     if (newTodo.trim() === "") return;
@@ -48,6 +56,43 @@ export default function HomeScreen() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const renderTodoItem = ({ item }: { item: Todo }) => (
+    <ThemedView
+      style={[
+        styles.todoItem,
+        { backgroundColor },
+        item.completed && styles.completedTodoItem,
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.checkbox}
+        onPress={() => toggleTodo(item.id)}
+      >
+        {item.completed ? (
+          <Ionicons name="checkbox" size={24} color="#4CAF50" />
+        ) : (
+          <Ionicons name="square-outline" size={24} color="#666" />
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.todoTextContainer}
+        onPress={() => toggleTodo(item.id)}
+      >
+        <ThemedText
+          style={[styles.todoText, item.completed && styles.completedTodoText]}
+        >
+          {item.text}
+        </ThemedText>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => deleteTodo(item.id)}
+        style={styles.deleteButton}
+      >
+        <ThemedText style={styles.deleteButtonText}>×</ThemedText>
+      </TouchableOpacity>
+    </ThemedView>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <ThemedView style={styles.content}>
@@ -70,31 +115,9 @@ export default function HomeScreen() {
         </ThemedView>
 
         <FlatList
-          data={todos}
+          data={sortedTodos}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ThemedView style={[styles.todoItem, { backgroundColor }]}>
-              <TouchableOpacity
-                style={styles.todoTextContainer}
-                onPress={() => toggleTodo(item.id)}
-              >
-                <ThemedText
-                  style={[
-                    styles.todoText,
-                    item.completed && styles.completedTodoText,
-                  ]}
-                >
-                  {item.text}
-                </ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => deleteTodo(item.id)}
-                style={styles.deleteButton}
-              >
-                <ThemedText style={styles.deleteButtonText}>×</ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
-          )}
+          renderItem={renderTodoItem}
           style={styles.list}
         />
       </ThemedView>
@@ -171,5 +194,12 @@ const styles = StyleSheet.create({
     color: "#ff4444",
     fontSize: 24,
     fontWeight: "bold",
+  },
+  checkbox: {
+    marginRight: 12,
+    justifyContent: "center",
+  },
+  completedTodoItem: {
+    backgroundColor: "rgba(76, 175, 80, 0.1)", // Light green background
   },
 });
