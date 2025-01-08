@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   Modal,
   View,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { format } from "date-fns";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -19,6 +21,16 @@ interface Todo {
   text: string;
   completed: boolean;
   dueDate?: Date;
+  dueTime?: string;
+  isUrgent?: boolean;
+  category?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
 }
 
 export default function HomeScreen() {
@@ -26,10 +38,22 @@ export default function HomeScreen() {
   const [newTodo, setNewTodo] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showCalendar, setShowCalendar] = useState(false);
+  const [dueTime, setDueTime] = useState<string>("");
+  const [isUrgent, setIsUrgent] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
   const backgroundColor = useThemeColor({}, "background");
+
+  const categories: Category[] = [
+    { id: "1", name: "Work", icon: "briefcase", color: "bg-blue-500" },
+    { id: "2", name: "Personal", icon: "person", color: "bg-purple-500" },
+    { id: "3", name: "Shopping", icon: "cart", color: "bg-green-500" },
+    { id: "4", name: "Health", icon: "fitness", color: "bg-red-500" },
+    { id: "5", name: "Study", icon: "book", color: "bg-yellow-500" },
+  ];
 
   // Sort todos with completed items at the bottom
   const sortedTodos = useMemo(() => {
@@ -49,10 +73,17 @@ export default function HomeScreen() {
         text: newTodo.trim(),
         completed: false,
         dueDate: selectedDate,
+        dueTime,
+        isUrgent,
+        category: selectedCategory,
       },
     ]);
     setNewTodo("");
     setSelectedDate(undefined);
+    setDueTime("");
+    setIsUrgent(false);
+    setSelectedCategory("");
+    setShowCalendar(false);
   };
 
   const toggleTodo = (id: string) => {
@@ -67,31 +98,45 @@ export default function HomeScreen() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
+  const onTimeChange = (_: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setDueTime(format(selectedTime, "HH:mm"));
+    }
+  };
+
   const renderCalendar = () => (
     <Modal
       visible={showCalendar}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={() => setShowCalendar(false)}
     >
-      <TouchableOpacity
-        className="flex-1 bg-black/50"
-        onPress={() => setShowCalendar(false)}
-      >
-        <View className="mt-32 mx-4 bg-white rounded-xl overflow-hidden">
-          <View className="p-4">
-            {/* Calendar days grid */}
-            <View className="flex-row flex-wrap">
+      <View className="flex-1 bg-black/50 justify-end">
+        <View className="bg-white dark:bg-gray-800 rounded-t-3xl">
+          <ScrollView className="p-4">
+            {/* Header */}
+            <View className="flex-row justify-between items-center mb-4">
+              <ThemedText className="text-xl font-semibold dark:text-white">
+                Set Task Details
+              </ThemedText>
+              <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Due Date Section */}
+            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
+              Due Date
+            </ThemedText>
+            <View className="flex-row flex-wrap mb-6">
               {Array.from({ length: 31 }, (_, i) => {
                 const date = new Date();
                 date.setDate(date.getDate() + i);
                 return (
                   <TouchableOpacity
                     key={i}
-                    onPress={() => {
-                      setSelectedDate(date);
-                      setShowCalendar(false);
-                    }}
+                    onPress={() => setSelectedDate(date)}
                     className={`w-[14.28%] p-2 items-center ${
                       selectedDate &&
                       selectedDate.toDateString() === date.toDateString()
@@ -104,7 +149,7 @@ export default function HomeScreen() {
                         selectedDate &&
                         selectedDate.toDateString() === date.toDateString()
                           ? "text-white"
-                          : ""
+                          : "dark:text-white"
                       }`}
                     >
                       {format(date, "d")}
@@ -113,9 +158,92 @@ export default function HomeScreen() {
                 );
               })}
             </View>
-          </View>
+
+            {/* Time Picker */}
+            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
+              Time
+            </ThemedText>
+            <TouchableOpacity
+              onPress={() => setShowTimePicker(true)}
+              className="h-12 border border-gray-300 dark:border-gray-600 rounded-lg px-3 mb-6 justify-center"
+            >
+              <ThemedText className="text-base dark:text-white">
+                {dueTime || "Select time"}
+              </ThemedText>
+            </TouchableOpacity>
+
+            {showTimePicker && (
+              <DateTimePicker
+                value={dueTime ? new Date(`2000-01-01T${dueTime}`) : new Date()}
+                mode="time"
+                is24Hour={true}
+                onChange={onTimeChange}
+              />
+            )}
+
+            {/* Urgent Checkbox */}
+            <TouchableOpacity
+              className="flex-row items-center mb-6"
+              onPress={() => setIsUrgent(!isUrgent)}
+            >
+              <View
+                className={`w-6 h-6 rounded border-2 border-gray-300 dark:border-gray-600 mr-2 items-center justify-center ${
+                  isUrgent ? "bg-red-500 border-red-500" : ""
+                }`}
+              >
+                {isUrgent && (
+                  <Ionicons name="checkmark" size={16} color="white" />
+                )}
+              </View>
+              <ThemedText className="text-base dark:text-white">
+                Mark as Urgent
+              </ThemedText>
+            </TouchableOpacity>
+
+            {/* Categories */}
+            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
+              Category
+            </ThemedText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mb-6"
+            >
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  onPress={() => setSelectedCategory(category.id)}
+                  className={`mr-4 p-3 rounded-lg ${category.color} ${
+                    selectedCategory === category.id
+                      ? "border-2 border-white dark:border-gray-300"
+                      : ""
+                  }`}
+                >
+                  <View className="items-center">
+                    <Ionicons name={category.icon} size={24} color="white" />
+                    <ThemedText className="text-white mt-1">
+                      {category.name}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Add Button */}
+            <TouchableOpacity
+              onPress={() => {
+                addTodo();
+                setShowCalendar(false);
+              }}
+              className="bg-blue-500 p-4 rounded-lg mb-4"
+            >
+              <ThemedText className="text-white text-center font-semibold text-lg">
+                Add Task
+              </ThemedText>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 
@@ -136,20 +264,41 @@ export default function HomeScreen() {
           <Ionicons name="square-outline" size={24} color="#666" />
         )}
       </TouchableOpacity>
-      <TouchableOpacity className="flex-1" onPress={() => toggleTodo(item.id)}>
-        <ThemedText
-          className={`text-base ${
-            item.completed ? "line-through opacity-60" : ""
-          }`}
-        >
-          {item.text}
-        </ThemedText>
-        {item.dueDate && (
-          <ThemedText className="text-sm text-gray-500 mt-1">
-            {format(item.dueDate, "MMM d, yyyy")}
+      <View className="flex-1">
+        <TouchableOpacity onPress={() => toggleTodo(item.id)}>
+          <ThemedText
+            className={`text-base ${
+              item.completed ? "line-through opacity-60" : ""
+            }`}
+          >
+            {item.text}
           </ThemedText>
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <View className="flex-row items-center mt-1">
+          {item.category && (
+            <View
+              className={`px-2 py-1 rounded-full mr-2 ${
+                categories.find((c) => c.id === item.category)?.color
+              }`}
+            >
+              <ThemedText className="text-xs text-white">
+                {categories.find((c) => c.id === item.category)?.name}
+              </ThemedText>
+            </View>
+          )}
+          {item.isUrgent && (
+            <View className="px-2 py-1 rounded-full bg-red-500 mr-2">
+              <ThemedText className="text-xs text-white">Urgent</ThemedText>
+            </View>
+          )}
+          {(item.dueDate || item.dueTime) && (
+            <ThemedText className="text-xs text-gray-500">
+              {item.dueDate && format(item.dueDate, "MMM d")}
+              {item.dueTime && ` at ${item.dueTime}`}
+            </ThemedText>
+          )}
+        </View>
+      </View>
       <TouchableOpacity
         onPress={() => deleteTodo(item.id)}
         className="w-8 h-8 justify-center items-center"
