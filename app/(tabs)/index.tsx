@@ -1,74 +1,175 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from "react-native";
+import { useState } from "react";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TextInput, FlatList, TouchableOpacity } from "react-native";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useThemeColor } from "@/hooks/useThemeColor";
+
+interface Todo {
+  id: string;
+  text: string;
+  completed: boolean;
+}
 
 export default function HomeScreen() {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTodo, setNewTodo] = useState("");
+
+  const textColor = useThemeColor({}, "text");
+  const placeholderColor = useThemeColor({}, "tabIconDefault");
+  const backgroundColor = useThemeColor({}, "background");
+
+  const addTodo = () => {
+    if (newTodo.trim() === "") return;
+
+    setTodos([
+      ...todos,
+      {
+        id: Date.now().toString(),
+        text: newTodo.trim(),
+        completed: false,
+      },
+    ]);
+    setNewTodo("");
+  };
+
+  const toggleTodo = (id: string) => {
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  };
+
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter((todo) => todo.id !== id));
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <SafeAreaView style={styles.container}>
+      <ThemedView style={styles.content}>
+        <ThemedText type="title" style={styles.header}>
+          Todo List
+        </ThemedText>
+
+        <ThemedView style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, { color: textColor }]}
+            value={newTodo}
+            onChangeText={setNewTodo}
+            placeholder="Add a new task..."
+            placeholderTextColor={placeholderColor}
+            onSubmitEditing={addTodo}
+          />
+          <TouchableOpacity onPress={addTodo} style={styles.addButton}>
+            <ThemedText style={styles.addButtonText}>+</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+
+        <FlatList
+          data={todos}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ThemedView style={[styles.todoItem, { backgroundColor }]}>
+              <TouchableOpacity
+                style={styles.todoTextContainer}
+                onPress={() => toggleTodo(item.id)}
+              >
+                <ThemedText
+                  style={[
+                    styles.todoText,
+                    item.completed && styles.completedTodoText,
+                  ]}
+                >
+                  {item.text}
+                </ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => deleteTodo(item.id)}
+                style={styles.deleteButton}
+              >
+                <ThemedText style={styles.deleteButtonText}>×</ThemedText>
+              </TouchableOpacity>
+            </ThemedView>
+          )}
+          style={styles.list}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  header: {
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    marginBottom: 20,
+  },
+  input: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    fontSize: 16,
+  },
+  addButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#0a7ea4",
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addButtonText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  list: {
+    flex: 1,
+  },
+  todoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  todoTextContainer: {
+    flex: 1,
+  },
+  todoText: {
+    fontSize: 16,
+  },
+  completedTodoText: {
+    textDecorationLine: "line-through",
+    opacity: 0.6,
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#ff4444",
+    fontSize: 24,
+    fontWeight: "bold",
   },
 });
