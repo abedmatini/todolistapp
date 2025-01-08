@@ -131,10 +131,10 @@ export default function HomeScreen() {
     >
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-white dark:bg-gray-800 rounded-t-3xl">
-          <ScrollView className="p-4">
+          <View className="p-4">
             {/* Header */}
-            <View className="flex-row justify-between items-center mb-4">
-              <ThemedText className="text-xl font-semibold dark:text-white">
+            <View className="flex-row justify-between items-center mb-2">
+              <ThemedText className="text-lg font-semibold dark:text-white">
                 Set Task Details
               </ThemedText>
               <TouchableOpacity onPress={() => setShowCalendar(false)}>
@@ -143,85 +143,163 @@ export default function HomeScreen() {
             </View>
 
             {/* Month Navigation */}
-            <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row justify-between items-center mb-2">
               <TouchableOpacity
                 onPress={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-2"
+                className="p-1"
               >
                 <Ionicons name="chevron-back" size={24} color={textColor} />
               </TouchableOpacity>
-              <ThemedText className="text-lg font-semibold dark:text-white">
+              <ThemedText className="text-base font-semibold dark:text-white">
                 {format(currentMonth, "MMMM yyyy")}
               </ThemedText>
               <TouchableOpacity
                 onPress={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-2"
+                className="p-1"
               >
                 <Ionicons name="chevron-forward" size={24} color={textColor} />
               </TouchableOpacity>
             </View>
 
-            {/* Weekday Headers */}
-            <View className="flex-row mb-2">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <View key={day} className="flex-1 items-center">
-                  <ThemedText className="text-sm text-gray-500 dark:text-gray-400">
-                    {day}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
+            {/* Calendar Section - Reduced vertical spacing */}
+            <View className="mb-3">
+              {/* Weekday Headers */}
+              <View className="flex-row">
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (day) => (
+                    <View key={day} className="flex-1 items-center">
+                      <ThemedText className="text-xs text-gray-500 dark:text-gray-400">
+                        {day}
+                      </ThemedText>
+                    </View>
+                  )
+                )}
+              </View>
 
-            {/* Calendar Grid */}
-            <View className="flex-row flex-wrap mb-6">
-              {getDaysInMonth(currentMonth).map((date, index) => {
-                const isSelected =
-                  selectedDate &&
-                  format(selectedDate, "yyyy-MM-dd") ===
+              {/* Calendar Grid - Reduced cell size */}
+              <View className="flex-row flex-wrap">
+                {getDaysInMonth(currentMonth).map((date, index) => {
+                  const isSelected =
+                    selectedDate &&
+                    format(selectedDate, "yyyy-MM-dd") ===
+                      format(date, "yyyy-MM-dd");
+                  const isToday =
+                    format(new Date(), "yyyy-MM-dd") ===
                     format(date, "yyyy-MM-dd");
-                const isToday =
-                  format(new Date(), "yyyy-MM-dd") ===
-                  format(date, "yyyy-MM-dd");
 
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setSelectedDate(date)}
-                    className={`w-[14.28%] aspect-square items-center justify-center
-                      ${isSelected ? "bg-blue-500 rounded-full" : ""}
-                      ${
-                        isToday && !isSelected
-                          ? "border border-blue-500 rounded-full"
-                          : ""
-                      }`}
-                  >
-                    <ThemedText
-                      className={`text-base
-                        ${isSelected ? "text-white" : "dark:text-white"}
-                        ${isToday && !isSelected ? "text-blue-500" : ""}`}
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => setSelectedDate(date)}
+                      className={`w-[14.28%] aspect-square items-center justify-center
+                        ${isSelected ? "bg-blue-500 rounded-full" : ""}
+                        ${
+                          isToday && !isSelected
+                            ? "border border-blue-500 rounded-full"
+                            : ""
+                        }`}
                     >
-                      {format(date, "d")}
-                    </ThemedText>
-                  </TouchableOpacity>
-                );
-              })}
+                      <ThemedText
+                        className={`text-sm
+                          ${isSelected ? "text-white" : "dark:text-white"}
+                          ${isToday && !isSelected ? "text-blue-500" : ""}`}
+                      >
+                        {format(date, "d")}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
 
-            {/* Time Picker */}
-            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
-              Time
-            </ThemedText>
+            {/* Time and Category Section */}
+            <View className="flex-row justify-between items-start mb-3">
+              {/* Time Picker Column */}
+              <View className="flex-1 mr-2">
+                <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
+                  Time
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() => setShowTimePicker(true)}
+                  className="h-10 border border-gray-300 dark:border-gray-600 rounded-lg px-3 justify-center"
+                >
+                  <ThemedText className="text-sm dark:text-white">
+                    {dueTime || "Select time"}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {/* Urgent Toggle */}
+              <View className="flex-1">
+                <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
+                  Priority
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() => setIsUrgent(!isUrgent)}
+                  className={`h-10 rounded-lg px-3 justify-center ${
+                    isUrgent ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"
+                  }`}
+                >
+                  <ThemedText
+                    className={`text-sm ${
+                      isUrgent ? "text-white" : "dark:text-white"
+                    }`}
+                  >
+                    {isUrgent ? "Urgent" : "Normal"}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Categories - Horizontal scroll */}
+            <View>
+              <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
+                Category
+              </ThemedText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="mb-3"
+              >
+                {categories.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    onPress={() => setSelectedCategory(category.id)}
+                    className={`mr-2 px-3 py-2 rounded-lg ${category.color} ${
+                      selectedCategory === category.id
+                        ? "border-2 border-white dark:border-gray-300"
+                        : ""
+                    }`}
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name={category.icon} size={16} color="white" />
+                      <ThemedText className="text-white text-sm ml-1">
+                        {category.name}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Add Button */}
             <TouchableOpacity
-              onPress={() => setShowTimePicker(true)}
-              className="h-12 border border-gray-300 dark:border-gray-600 rounded-lg px-3 mb-6 justify-center"
+              onPress={() => {
+                addTodo();
+                setShowCalendar(false);
+              }}
+              className="bg-blue-500 p-3 rounded-lg"
             >
-              <ThemedText className="text-base dark:text-white">
-                {dueTime || "Select time"}
+              <ThemedText className="text-white text-center font-semibold">
+                Add Task
               </ThemedText>
             </TouchableOpacity>
+          </View>
 
-            {showTimePicker &&
-              (Platform.OS === "android" ? (
+          {/* Time Picker Modal */}
+          {showTimePicker && (
+            <View className="bg-white dark:bg-gray-800 px-4 pb-4">
+              {Platform.OS === "android" ? (
                 <DateTimePicker
                   value={
                     dueTime ? new Date(`2000-01-01T${dueTime}:00`) : new Date()
@@ -230,87 +308,25 @@ export default function HomeScreen() {
                   is24Hour={true}
                   onChange={onTimeChange}
                   display="spinner"
+                  textColor={textColor} // Add this for dark mode visibility
                 />
               ) : (
-                <View className="bg-white dark:bg-gray-800 p-4 rounded-lg">
-                  <DateTimePicker
-                    value={
-                      dueTime
-                        ? new Date(`2000-01-01T${dueTime}:00`)
-                        : new Date()
-                    }
-                    mode="time"
-                    is24Hour={true}
-                    onChange={onTimeChange}
-                    display="spinner"
-                    themeVariant={
-                      backgroundColor === "#000000" ? "dark" : "light"
-                    }
-                  />
-                </View>
-              ))}
-
-            {/* Urgent Checkbox */}
-            <TouchableOpacity
-              className="flex-row items-center mb-6"
-              onPress={() => setIsUrgent(!isUrgent)}
-            >
-              <View
-                className={`w-6 h-6 rounded border-2 border-gray-300 dark:border-gray-600 mr-2 items-center justify-center ${
-                  isUrgent ? "bg-red-500 border-red-500" : ""
-                }`}
-              >
-                {isUrgent && (
-                  <Ionicons name="checkmark" size={16} color="white" />
-                )}
-              </View>
-              <ThemedText className="text-base dark:text-white">
-                Mark as Urgent
-              </ThemedText>
-            </TouchableOpacity>
-
-            {/* Categories */}
-            <ThemedText className="text-base font-semibold mb-2 dark:text-white">
-              Category
-            </ThemedText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mb-6"
-            >
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  onPress={() => setSelectedCategory(category.id)}
-                  className={`mr-4 p-3 rounded-lg ${category.color} ${
-                    selectedCategory === category.id
-                      ? "border-2 border-white dark:border-gray-300"
-                      : ""
-                  }`}
-                >
-                  <View className="items-center">
-                    <Ionicons name={category.icon} size={24} color="white" />
-                    <ThemedText className="text-white mt-1">
-                      {category.name}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Add Button */}
-            <TouchableOpacity
-              onPress={() => {
-                addTodo();
-                setShowCalendar(false);
-              }}
-              className="bg-blue-500 p-4 rounded-lg mb-4"
-            >
-              <ThemedText className="text-white text-center font-semibold text-lg">
-                Add Task
-              </ThemedText>
-            </TouchableOpacity>
-          </ScrollView>
+                <DateTimePicker
+                  value={
+                    dueTime ? new Date(`2000-01-01T${dueTime}:00`) : new Date()
+                  }
+                  mode="time"
+                  is24Hour={true}
+                  onChange={onTimeChange}
+                  display="spinner"
+                  textColor={textColor} // Add this for dark mode visibility
+                  themeVariant={
+                    backgroundColor === "#000000" ? "dark" : "light"
+                  }
+                />
+              )}
+            </View>
+          )}
         </View>
       </View>
     </Modal>
