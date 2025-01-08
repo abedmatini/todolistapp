@@ -4,7 +4,7 @@
     "slug": "todolistapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/splash-todo-list.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,8 +13,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/splash-todo-list.png",
+        "backgroundColor": "#013220"
       }
     },
     "web": {
@@ -23,14 +23,16 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#232323",
+          "image": "./assets/images/splash-todo-list.png",
+          "dark": {
+            "image": "./assets/images/splash-todo-list.png",
+            "backgroundColor": "#90EE90"
+          },
+          "imageWidth": 200
         }
       ]
     ],
