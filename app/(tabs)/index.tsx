@@ -1,22 +1,31 @@
-import { StyleSheet } from "react-native";
 import { useState, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  TextInput,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { format } from "date-fns";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { TextInput, FlatList, TouchableOpacity } from "react-native";
 import { useThemeColor } from "@/hooks/useThemeColor";
 
 interface Todo {
   id: string;
   text: string;
   completed: boolean;
+  dueDate?: Date;
 }
 
 export default function HomeScreen() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
@@ -39,9 +48,11 @@ export default function HomeScreen() {
         id: Date.now().toString(),
         text: newTodo.trim(),
         completed: false,
+        dueDate: selectedDate,
       },
     ]);
     setNewTodo("");
+    setSelectedDate(undefined);
   };
 
   const toggleTodo = (id: string) => {
@@ -56,16 +67,67 @@ export default function HomeScreen() {
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
-  const renderTodoItem = ({ item }: { item: Todo }) => (
-    <ThemedView
-      style={[
-        styles.todoItem,
-        { backgroundColor },
-        item.completed && styles.completedTodoItem,
-      ]}
+  const renderCalendar = () => (
+    <Modal
+      visible={showCalendar}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowCalendar(false)}
     >
       <TouchableOpacity
-        style={styles.checkbox}
+        className="flex-1 bg-black/50"
+        onPress={() => setShowCalendar(false)}
+      >
+        <View className="mt-32 mx-4 bg-white rounded-xl overflow-hidden">
+          <View className="p-4">
+            {/* Calendar days grid */}
+            <View className="flex-row flex-wrap">
+              {Array.from({ length: 31 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    onPress={() => {
+                      setSelectedDate(date);
+                      setShowCalendar(false);
+                    }}
+                    className={`w-[14.28%] p-2 items-center ${
+                      selectedDate &&
+                      selectedDate.toDateString() === date.toDateString()
+                        ? "bg-blue-500 rounded-full"
+                        : ""
+                    }`}
+                  >
+                    <ThemedText
+                      className={`${
+                        selectedDate &&
+                        selectedDate.toDateString() === date.toDateString()
+                          ? "text-white"
+                          : ""
+                      }`}
+                    >
+                      {format(date, "d")}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+
+  const renderTodoItem = ({ item }: { item: Todo }) => (
+    <ThemedView
+      className={`flex-row items-center p-3 rounded-lg mb-2 ${
+        item.completed ? "bg-green-50/10" : ""
+      }`}
+      style={{ backgroundColor }}
+    >
+      <TouchableOpacity
+        className="mr-3 justify-center"
         onPress={() => toggleTodo(item.id)}
       >
         {item.completed ? (
@@ -74,132 +136,82 @@ export default function HomeScreen() {
           <Ionicons name="square-outline" size={24} color="#666" />
         )}
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.todoTextContainer}
-        onPress={() => toggleTodo(item.id)}
-      >
+      <TouchableOpacity className="flex-1" onPress={() => toggleTodo(item.id)}>
         <ThemedText
-          style={[styles.todoText, item.completed && styles.completedTodoText]}
+          className={`text-base ${
+            item.completed ? "line-through opacity-60" : ""
+          }`}
         >
           {item.text}
         </ThemedText>
+        {item.dueDate && (
+          <ThemedText className="text-sm text-gray-500 mt-1">
+            {format(item.dueDate, "MMM d, yyyy")}
+          </ThemedText>
+        )}
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => deleteTodo(item.id)}
-        style={styles.deleteButton}
+        className="w-8 h-8 justify-center items-center"
       >
-        <ThemedText style={styles.deleteButtonText}>×</ThemedText>
+        <ThemedText className="text-red-500 text-2xl font-bold">×</ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ThemedView style={styles.content}>
-        <ThemedText type="title" style={styles.header}>
+    <SafeAreaView className="flex-1">
+      <ThemedView className="flex-1 p-5">
+        <ThemedText type="title" className="mb-5 text-center">
           Todo List
         </ThemedText>
 
-        <ThemedView style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, { color: textColor }]}
-            value={newTodo}
-            onChangeText={setNewTodo}
-            placeholder="Add a new task..."
-            placeholderTextColor={placeholderColor}
-            onSubmitEditing={addTodo}
-          />
-          <TouchableOpacity onPress={addTodo} style={styles.addButton}>
-            <ThemedText style={styles.addButtonText}>+</ThemedText>
-          </TouchableOpacity>
+        <ThemedView className="mb-5">
+          <ThemedView className="flex-row">
+            <TextInput
+              className="flex-1 h-12 border border-gray-300 rounded-lg px-3 mr-2 text-base"
+              style={{ color: textColor }}
+              value={newTodo}
+              onChangeText={setNewTodo}
+              placeholder="Add a new task..."
+              placeholderTextColor={placeholderColor}
+              onSubmitEditing={addTodo}
+              onFocus={() => setShowCalendar(true)}
+            />
+            <TouchableOpacity
+              onPress={addTodo}
+              className="w-12 h-12 bg-[#0a7ea4] rounded-lg justify-center items-center"
+            >
+              <ThemedText className="text-white text-2xl font-bold">
+                +
+              </ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+          {selectedDate && (
+            <ThemedView className="mt-2 flex-row items-center">
+              <Ionicons name="calendar-outline" size={16} color={textColor} />
+              <ThemedText className="ml-2 text-sm">
+                Due: {format(selectedDate, "MMM d, yyyy")}
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setSelectedDate(undefined)}
+                className="ml-2"
+              >
+                <Ionicons name="close-circle" size={16} color={textColor} />
+              </TouchableOpacity>
+            </ThemedView>
+          )}
         </ThemedView>
 
         <FlatList
+          className="flex-1"
           data={sortedTodos}
           keyExtractor={(item) => item.id}
           renderItem={renderTodoItem}
-          style={styles.list}
         />
+
+        {renderCalendar()}
       </ThemedView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  header: {
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    marginBottom: 20,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginRight: 8,
-    fontSize: 16,
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: "#0a7ea4",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  list: {
-    flex: 1,
-  },
-  todoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  todoTextContainer: {
-    flex: 1,
-  },
-  todoText: {
-    fontSize: 16,
-  },
-  completedTodoText: {
-    textDecorationLine: "line-through",
-    opacity: 0.6,
-  },
-  deleteButton: {
-    width: 32,
-    height: 32,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteButtonText: {
-    color: "#ff4444",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  checkbox: {
-    marginRight: 12,
-    justifyContent: "center",
-  },
-  completedTodoItem: {
-    backgroundColor: "rgba(76, 175, 80, 0.1)", // Light green background
-  },
-});
