@@ -37,6 +37,10 @@ interface Todo {
   priority?: string;
   category?: string;
   notificationId?: string;
+  recurrence?: {
+    type: "daily" | "weekly" | "monthly" | "yearly";
+    enabled: boolean;
+  };
 }
 
 interface Priority {
@@ -64,6 +68,10 @@ export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [recurrenceType, setRecurrenceType] = useState<
+    "daily" | "weekly" | "monthly" | "yearly"
+  >("daily");
+  const [isRecurring, setIsRecurring] = useState(false);
 
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
@@ -155,6 +163,12 @@ export default function HomeScreen() {
         priority: selectedPriority,
         category: selectedCategory,
         notificationId,
+        recurrence: isRecurring
+          ? {
+              type: recurrenceType,
+              enabled: true,
+            }
+          : undefined,
       },
     ]);
 
@@ -163,15 +177,23 @@ export default function HomeScreen() {
     setDueTime("");
     setSelectedPriority("3");
     setSelectedCategory("");
+    setIsRecurring(false);
+    setRecurrenceType("daily");
     setShowCalendar(false);
   };
 
   const toggleTodo = (id: string) => {
+    const todo = todos.find((t) => t.id === id);
     setTodos(
       todos.map((todo) =>
         todo.id === id ? { ...todo, completed: !todo.completed } : todo
       )
     );
+
+    // If the task is completed and it's recurring, create the next occurrence
+    if (todo && !todo.completed && todo.recurrence?.enabled) {
+      handleRecurringTask(todo);
+    }
   };
 
   const deleteTodo = async (id: string) => {
@@ -327,6 +349,53 @@ export default function HomeScreen() {
               </View>
             </View>
 
+            {/* Add Recurrence Section */}
+            <View className="mb-4">
+              <View className="flex-row justify-between items-center mb-2">
+                <ThemedText className="text-sm font-semibold">
+                  Recurring Task
+                </ThemedText>
+                <TouchableOpacity
+                  onPress={() => setIsRecurring(!isRecurring)}
+                  className={`px-3 py-1 rounded-full ${
+                    isRecurring ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                >
+                  <ThemedText
+                    className={`${isRecurring ? "text-[#ffffff]" : ""}`}
+                  >
+                    {isRecurring ? "On" : "Off"}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+
+              {isRecurring && (
+                <View className="flex-row flex-wrap gap-2">
+                  {(["daily", "weekly", "monthly", "yearly"] as const).map(
+                    (type) => (
+                      <TouchableOpacity
+                        key={type}
+                        onPress={() => setRecurrenceType(type)}
+                        className={`rounded-lg px-3 py-2 ${
+                          recurrenceType === type
+                            ? "bg-blue-500"
+                            : "bg-gray-200 dark:bg-gray-700"
+                        }`}
+                      >
+                        <ThemedText
+                          className={`text-sm ${
+                            recurrenceType === type ? "text-white" : ""
+                          }`}
+                        >
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
+              )}
+            </View>
+
             {/* Categories Section */}
             <View>
               <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
@@ -376,7 +445,7 @@ export default function HomeScreen() {
               }}
               className="bg-blue-500 p-3 rounded-lg"
             >
-              <ThemedText className="text-white text-center font-semibold">
+              <ThemedText className="text-[#ffffff] text-center font-semibold">
                 Add Task
               </ThemedText>
             </TouchableOpacity>
@@ -420,7 +489,7 @@ export default function HomeScreen() {
 
   const renderTodoItem = ({ item }: { item: Todo }) => (
     <ThemedView
-      className={`flex-row items-center p-3 rounded-lg mb-2 ${
+      className={`flex-row items-center p-4 rounded-2xl mb-3 border border-gray-300 dark:border-gray-300 ${
         item.completed ? "bg-green-50/10" : ""
       }`}
       style={{ backgroundColor }}
@@ -430,60 +499,98 @@ export default function HomeScreen() {
         onPress={() => toggleTodo(item.id)}
       >
         {item.completed ? (
-          <Ionicons name="checkbox" size={24} color="#4CAF50" />
+          <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
         ) : (
-          <Ionicons name="square-outline" size={24} color="#666" />
+          <Ionicons name="ellipse-outline" size={24} color="#666" />
         )}
       </TouchableOpacity>
+
       <View className="flex-1">
-        <TouchableOpacity onPress={() => toggleTodo(item.id)}>
-          <ThemedText
-            className={`text-base ${
-              item.completed ? "line-through opacity-60" : ""
-            }`}
+        <View className="flex-row items-center justify-between">
+          <TouchableOpacity
+            onPress={() => toggleTodo(item.id)}
+            className="flex-1 mr-2"
           >
-            {item.text}
-          </ThemedText>
-        </TouchableOpacity>
-        <View className="flex-row items-center mt-1">
+            <ThemedText
+              className={`text-base font-medium ${
+                item.completed ? "line-through opacity-60" : ""
+              }`}
+            >
+              {item.text}
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => deleteTodo(item.id)} className="p-2">
+            <Ionicons name="close" size={20} color="#FF0000" />
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-row items-center mt-2 flex-wrap">
           {item.category && (
             <View
-              className={`px-2 py-1 rounded-full mr-2 ${
+              className={`px-3 py-1 rounded-full mr-2 mb-1 ${
                 categories.find((c) => c.id === item.category)?.color
               }`}
             >
-              <ThemedText className="text-xs text-white">
+              <ThemedText className="text-white text-xs font-medium">
                 {categories.find((c) => c.id === item.category)?.name}
               </ThemedText>
             </View>
           )}
           {item.priority && (
             <View
-              className={`px-2 py-1 rounded-full mr-2 ${
+              className={`px-3 py-1 rounded-full mr-2 mb-1 ${
                 priorities.find((p) => p.id === item.priority)?.color
               }`}
             >
-              <ThemedText className="text-xs text-white">
+              <ThemedText className="text-white text-xs font-medium">
                 {priorities.find((p) => p.id === item.priority)?.name}
               </ThemedText>
             </View>
           )}
           {(item.dueDate || item.dueTime) && (
-            <ThemedText className="text-xs text-gray-500">
-              {item.dueDate && format(item.dueDate, "MMM d")}
-              {item.dueTime && ` at ${item.dueTime}`}
-            </ThemedText>
+            <View className="flex-row items-center mb-1">
+              <Ionicons name="time-outline" size={14} color={textColor} />
+              <ThemedText className="text-xs ml-1 opacity-60">
+                {item.dueDate && format(item.dueDate, "MMM d")}
+                {item.dueTime && ` at ${item.dueTime}`}
+              </ThemedText>
+            </View>
           )}
         </View>
       </View>
-      <TouchableOpacity
-        onPress={() => deleteTodo(item.id)}
-        className="w-8 h-8 justify-center items-center"
-      >
-        <ThemedText className="text-red-500 text-2xl font-bold">×</ThemedText>
-      </TouchableOpacity>
     </ThemedView>
   );
+
+  // Add this function to handle recurring tasks
+  const handleRecurringTask = (todo: Todo) => {
+    if (todo.recurrence?.enabled && todo.dueDate) {
+      const newDueDate = new Date(todo.dueDate);
+
+      switch (todo.recurrence.type) {
+        case "daily":
+          newDueDate.setDate(newDueDate.getDate() + 1);
+          break;
+        case "weekly":
+          newDueDate.setDate(newDueDate.getDate() + 7);
+          break;
+        case "monthly":
+          newDueDate.setMonth(newDueDate.getMonth() + 1);
+          break;
+        case "yearly":
+          newDueDate.setFullYear(newDueDate.getFullYear() + 1);
+          break;
+      }
+
+      const newTodo = {
+        ...todo,
+        id: Date.now().toString(),
+        completed: false,
+        dueDate: newDueDate,
+      };
+
+      setTodos((prevTodos) => [...prevTodos, newTodo]);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1">
@@ -508,7 +615,7 @@ export default function HomeScreen() {
               onPress={addTodo}
               className="w-12 h-12 bg-[#0a7ea4] rounded-lg justify-center items-center"
             >
-              <ThemedText className="text-white text-2xl font-bold">
+              <ThemedText className="text-white text-2xl font-bold ">
                 +
               </ThemedText>
             </TouchableOpacity>
