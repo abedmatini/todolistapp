@@ -32,7 +32,7 @@ interface Todo {
   completed: boolean;
   dueDate?: Date;
   dueTime?: string;
-  isUrgent?: boolean;
+  priority?: string;
   category?: string;
 }
 
@@ -43,13 +43,19 @@ interface Category {
   color: string;
 }
 
+interface Priority {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export default function HomeScreen() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showCalendar, setShowCalendar] = useState(false);
   const [dueTime, setDueTime] = useState<string>("");
-  const [isUrgent, setIsUrgent] = useState(false);
+  const [selectedPriority, setSelectedPriority] = useState<string>("3");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -64,6 +70,13 @@ export default function HomeScreen() {
     { id: "3", name: "Shopping", icon: "cart", color: "bg-green-500" },
     { id: "4", name: "Health", icon: "fitness", color: "bg-red-500" },
     { id: "5", name: "Study", icon: "book", color: "bg-yellow-500" },
+  ];
+
+  const priorities: Priority[] = [
+    { id: "1", name: "Urgent", color: "bg-red-500" },
+    { id: "2", name: "High", color: "bg-orange-500" },
+    { id: "3", name: "Medium", color: "bg-yellow-500" },
+    { id: "4", name: "Low", color: "bg-blue-500" },
   ];
 
   // Sort todos with completed items at the bottom
@@ -85,14 +98,14 @@ export default function HomeScreen() {
         completed: false,
         dueDate: selectedDate,
         dueTime,
-        isUrgent,
+        priority: selectedPriority,
         category: selectedCategory,
       },
     ]);
     setNewTodo("");
     setSelectedDate(undefined);
     setDueTime("");
-    setIsUrgent(false);
+    setSelectedPriority("3");
     setSelectedCategory("");
     setShowCalendar(false);
   };
@@ -229,25 +242,28 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Urgent Toggle */}
+              {/* Priority Selection */}
               <View className="flex-1">
                 <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
                   Priority
                 </ThemedText>
-                <TouchableOpacity
-                  onPress={() => setIsUrgent(!isUrgent)}
-                  className={`h-10 rounded-lg px-3 justify-center ${
-                    isUrgent ? "bg-red-500" : "bg-gray-200 dark:bg-gray-700"
-                  }`}
-                >
-                  <ThemedText
-                    className={`text-sm ${
-                      isUrgent ? "text-white" : "dark:text-white"
-                    }`}
-                  >
-                    {isUrgent ? "Urgent" : "Normal"}
-                  </ThemedText>
-                </TouchableOpacity>
+                <View className="flex-row flex-wrap gap-2">
+                  {priorities.map((priority) => (
+                    <TouchableOpacity
+                      key={priority.id}
+                      onPress={() => setSelectedPriority(priority.id)}
+                      className={`rounded-lg px-3 py-2 ${priority.color} ${
+                        selectedPriority === priority.id
+                          ? "border-2 border-white dark:border-gray-300"
+                          : "opacity-70"
+                      }`}
+                    >
+                      <ThemedText className="text-white text-sm">
+                        {priority.name}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
 
@@ -371,9 +387,15 @@ export default function HomeScreen() {
               </ThemedText>
             </View>
           )}
-          {item.isUrgent && (
-            <View className="px-2 py-1 rounded-full bg-red-500 mr-2">
-              <ThemedText className="text-xs text-white">Urgent</ThemedText>
+          {item.priority && (
+            <View
+              className={`px-2 py-1 rounded-full mr-2 ${
+                priorities.find((p) => p.id === item.priority)?.color
+              }`}
+            >
+              <ThemedText className="text-xs text-white">
+                {priorities.find((p) => p.id === item.priority)?.name}
+              </ThemedText>
             </View>
           )}
           {(item.dueDate || item.dueTime) && (
