@@ -26,6 +26,7 @@ import * as Notifications from "expo-notifications";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useCategories } from "@/context/CategoryContext";
 
 interface Todo {
   id: string;
@@ -36,13 +37,6 @@ interface Todo {
   priority?: string;
   category?: string;
   notificationId?: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
 }
 
 interface Priority {
@@ -75,13 +69,7 @@ export default function HomeScreen() {
   const placeholderColor = useThemeColor({}, "tabIconDefault");
   const backgroundColor = useThemeColor({}, "background");
 
-  const categories: Category[] = [
-    { id: "1", name: "Work", icon: "briefcase", color: "bg-blue-500" },
-    { id: "2", name: "Personal", icon: "person", color: "bg-purple-500" },
-    { id: "3", name: "Shopping", icon: "cart", color: "bg-green-500" },
-    { id: "4", name: "Health", icon: "fitness", color: "bg-red-500" },
-    { id: "5", name: "Study", icon: "book", color: "bg-yellow-500" },
-  ];
+  const { categories } = useCategories();
 
   const priorities: Priority[] = [
     { id: "1", name: "Urgent", color: "bg-red-500" },
@@ -339,7 +327,7 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Categories - Horizontal scroll */}
+            {/* Categories Section */}
             <View>
               <ThemedText className="text-sm font-semibold mb-1 dark:text-white">
                 Category
@@ -347,26 +335,36 @@ export default function HomeScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                className="mb-3"
+                className="mb-4"
               >
-                {categories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    onPress={() => setSelectedCategory(category.id)}
-                    className={`mr-2 px-3 py-2 rounded-lg ${category.color} ${
-                      selectedCategory === category.id
-                        ? "border-2 border-white dark:border-gray-300"
-                        : ""
-                    }`}
-                  >
-                    <View className="flex-row items-center">
-                      <Ionicons name={category.icon} size={16} color="white" />
-                      <ThemedText className="text-white text-sm ml-1">
+                <View className="flex-row p-1">
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category.id}
+                      onPress={() => setSelectedCategory(category.id)}
+                      className={`flex-row items-center px-3 py-2 rounded-full mr-2 ${
+                        selectedCategory === category.id
+                          ? category.color
+                          : "bg-gray-200 dark:bg-gray-700"
+                      }`}
+                    >
+                      <Ionicons
+                        name={category.icon}
+                        size={16}
+                        color={
+                          selectedCategory === category.id ? "white" : textColor
+                        }
+                      />
+                      <ThemedText
+                        className={`ml-2 ${
+                          selectedCategory === category.id ? "text-white" : ""
+                        }`}
+                      >
                         {category.name}
                       </ThemedText>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </ScrollView>
             </View>
 

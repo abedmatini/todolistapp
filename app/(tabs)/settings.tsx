@@ -12,33 +12,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useCategories, CategorySetting } from "@/context/CategoryContext";
 
 interface ReminderSetting {
   priority: string;
   minutesBefore: number;
 }
 
-interface CategorySetting {
-  id: string;
-  name: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-}
-
 export default function SettingsScreen() {
+  const { categories, setCategories } = useCategories();
+
   const [reminderSettings, setReminderSettings] = useState<ReminderSetting[]>([
     { priority: "Urgent", minutesBefore: 15 },
     { priority: "High", minutesBefore: 10 },
     { priority: "Medium", minutesBefore: 5 },
     { priority: "Low", minutesBefore: 5 },
-  ]);
-
-  const [categories, setCategories] = useState<CategorySetting[]>([
-    { id: "1", name: "Work", icon: "briefcase", color: "bg-blue-500" },
-    { id: "2", name: "Personal", icon: "person", color: "bg-purple-500" },
-    { id: "3", name: "Shopping", icon: "cart", color: "bg-green-500" },
-    { id: "4", name: "Health", icon: "fitness", color: "bg-red-500" },
-    { id: "5", name: "Study", icon: "book", color: "bg-yellow-500" },
   ]);
 
   const textColor = useThemeColor({}, "text");
