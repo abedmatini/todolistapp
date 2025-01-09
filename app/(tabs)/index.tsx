@@ -21,6 +21,7 @@ import {
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import * as Notifications from "expo-notifications";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -34,6 +35,7 @@ interface Todo {
   dueTime?: string;
   priority?: string;
   category?: string;
+  notificationId?: string;
 }
 
 interface Category {
@@ -48,6 +50,15 @@ interface Priority {
   name: string;
   color: string;
 }
+
+// Configure notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 export default function HomeScreen() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -87,8 +98,63 @@ export default function HomeScreen() {
     });
   }, [todos]);
 
-  const addTodo = () => {
+  // Add this function to request permissions
+  async function requestNotificationPermissions() {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== "granted") {
+      alert("You need to enable notifications to receive reminders!");
+      return false;
+    }
+    return true;
+  }
+
+  // Add this function to schedule a reminder
+  async function scheduleReminder(
+    taskText: string,
+    dueDate: Date,
+    dueTime: string
+  ) {
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) return;
+
+    // Combine date and time
+    const [hours, minutes] = dueTime.split(":");
+    const scheduledTime = new Date(dueDate);
+    scheduledTime.setHours(parseInt(hours, 10), parseInt(minutes, 10));
+
+    // Set reminder 5 minutes before
+    const reminderTime = new Date(scheduledTime.getTime() - 5 * 60 * 1000);
+
+    // Cancel any existing notification for this task
+    const identifier = `reminder-${Date.now()}`;
+
+    // Schedule the notification
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Task Reminder",
+        body: `Your task "${taskText}" is due in 5 minutes!`,
+        data: { taskId: identifier },
+      },
+      trigger: {
+        date: reminderTime,
+      },
+      identifier,
+    });
+
+    return identifier;
+  }
+
+  const addTodo = async () => {
     if (newTodo.trim() === "") return;
+
+    let notificationId = null;
+    if (selectedDate && dueTime) {
+      notificationId = await scheduleReminder(
+        newTodo.trim(),
+        selectedDate,
+        dueTime
+      );
+    }
 
     setTodos([
       ...todos,
@@ -100,8 +166,10 @@ export default function HomeScreen() {
         dueTime,
         priority: selectedPriority,
         category: selectedCategory,
+        notificationId,
       },
     ]);
+
     setNewTodo("");
     setSelectedDate(undefined);
     setDueTime("");
@@ -118,7 +186,11 @@ export default function HomeScreen() {
     );
   };
 
-  const deleteTodo = (id: string) => {
+  const deleteTodo = async (id: string) => {
+    const todo = todos.find((t) => t.id === id);
+    if (todo?.notificationId) {
+      await Notifications.cancelScheduledNotificationAsync(todo.notificationId);
+    }
     setTodos(todos.filter((todo) => todo.id !== id));
   };
 
