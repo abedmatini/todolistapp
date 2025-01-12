@@ -8,6 +8,7 @@ import {
   View,
   ScrollView,
   Platform,
+  Text,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -27,6 +28,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useCategories } from "@/context/CategoryContext";
+import { TouchableWithoutFeedback } from "react-native";
 
 interface Todo {
   id: string;
@@ -41,6 +43,8 @@ interface Todo {
     type: "daily" | "weekly" | "monthly" | "yearly";
     enabled: boolean;
   };
+  note?: string;
+  taggedUsers?: string[];
 }
 
 interface Priority {
@@ -58,6 +62,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Add this new interface for the edit modal state
+interface EditModalState {
+  isVisible: boolean;
+  todo: Todo | null;
+}
+
 export default function HomeScreen() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
@@ -72,6 +82,21 @@ export default function HomeScreen() {
     "daily" | "weekly" | "monthly" | "yearly"
   >("daily");
   const [isRecurring, setIsRecurring] = useState(false);
+  const [note, setNote] = useState("");
+  const [taggedUsers, setTaggedUsers] = useState<string[]>([]);
+
+  // Add new state for edit modal
+  const [editModal, setEditModal] = useState<EditModalState>({
+    isVisible: false,
+    todo: null,
+  });
+  const [editNote, setEditNote] = useState("");
+  const [editText, setEditText] = useState("");
+  const [editDate, setEditDate] = useState<Date | undefined>();
+  const [editTime, setEditTime] = useState("");
+  const [editPriority, setEditPriority] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editTaggedUsers, setEditTaggedUsers] = useState<string[]>([]);
 
   const textColor = useThemeColor({}, "text");
   const placeholderColor = useThemeColor({}, "tabIconDefault");
@@ -169,6 +194,8 @@ export default function HomeScreen() {
               enabled: true,
             }
           : undefined,
+        note: note.trim(),
+        taggedUsers: taggedUsers,
       },
     ]);
 
@@ -180,6 +207,8 @@ export default function HomeScreen() {
     setIsRecurring(false);
     setRecurrenceType("daily");
     setShowCalendar(false);
+    setNote("");
+    setTaggedUsers([]);
   };
 
   const toggleTodo = (id: string) => {
@@ -504,24 +533,50 @@ export default function HomeScreen() {
           <Ionicons name="ellipse-outline" size={24} color="#666" />
         )}
       </TouchableOpacity>
+      {/* <TouchableWithoutFeedback onPress={() => toggleTodo(item.id)}>
+        <View className="mr-3 justify-center">
+          {item.completed ? (
+            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+          ) : (
+            <Ionicons name="ellipse-outline" size={24} color="#666" />
+          )}
+        </View>
+      </TouchableWithoutFeedback> */}
 
       <View className="flex-1">
         <View className="flex-row items-center justify-between">
-          <TouchableOpacity
-            onPress={() => toggleTodo(item.id)}
-            className="flex-1 mr-2"
+          <ThemedText
+            className={`text-base font-medium ${
+              item.completed ? "line-through opacity-60" : ""
+            }`}
           >
-            <ThemedText
-              className={`text-base font-medium ${
-                item.completed ? "line-through opacity-60" : ""
-              }`}
+            {item.text}
+            <Text>{item.note}</Text>
+          </ThemedText>
+          <View className="flex-row">
+            <TouchableOpacity
+              className="p-2"
+              onPress={() => {
+                // Open edit modal and populate with task details
+                setEditModal({ isVisible: true, todo: item });
+                setEditText(item.text);
+                setEditNote(item.note || "");
+                setEditDate(item.dueDate);
+                setEditTime(item.dueTime || "");
+                setEditPriority(item.priority || "");
+                setEditCategory(item.category || "");
+                setEditTaggedUsers(item.taggedUsers || []);
+              }}
             >
-              {item.text}
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => deleteTodo(item.id)} className="p-2">
-            <Ionicons name="close" size={20} color="#FF0000" />
-          </TouchableOpacity>
+              <Ionicons name="pencil" size={24} color={textColor} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="p-2"
+              onPress={() => deleteTodo(item.id)}
+            >
+              <Ionicons name="trash-outline" size={24} color="red" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View className="flex-row items-center mt-2 flex-wrap">
@@ -592,6 +647,190 @@ export default function HomeScreen() {
     }
   };
 
+  // Add sample users (replace with your actual users data/API)
+  const availableUsers = [
+    { id: "1", username: "@john.doe" },
+    { id: "2", username: "@jane.smith" },
+    { id: "3", username: "@mike.wilson" },
+  ];
+
+  // Add new state for suggestions
+  const [suggestions, setSuggestions] = useState<
+    { id: string; username: string }[]
+  >([]);
+
+  // Add function to handle task click
+  const handleTaskClick = (todo: Todo) => {
+    setEditModal({ isVisible: true, todo });
+    setEditText(todo.text);
+    setEditNote(todo.note || "");
+    setEditDate(todo.dueDate);
+    setEditTime(todo.dueTime || "");
+    setEditPriority(todo.priority || "");
+    setEditCategory(todo.category || "");
+    setEditTaggedUsers(todo.taggedUsers || []);
+  };
+
+  // Add function to update todo
+  const updateTodo = async () => {
+    if (!editModal.todo) return;
+
+    let notificationId = editModal.todo.notificationId;
+    if (editDate && editTime) {
+      // Cancel existing notification if it exists
+      if (notificationId) {
+        await Notifications.cancelScheduledNotificationAsync(notificationId);
+      }
+      // Schedule new notification
+      notificationId = await scheduleReminder(
+        editText.trim(),
+        editDate,
+        editTime
+      );
+    }
+
+    setTodos(
+      todos.map((todo) =>
+        todo.id === editModal.todo?.id
+          ? {
+              ...todo,
+              text: editText.trim(),
+              dueDate: editDate,
+              dueTime: editTime,
+              priority: editPriority,
+              category: editCategory,
+              note: editNote.trim(),
+              taggedUsers: editTaggedUsers,
+              notificationId,
+            }
+          : todo
+      )
+    );
+
+    setEditModal({ isVisible: false, todo: null });
+    resetEditFields();
+  };
+
+  const resetEditFields = () => {
+    setEditText("");
+    setEditDate(undefined);
+    setEditTime("");
+    setEditPriority("");
+    setEditCategory("");
+    setEditNote("");
+    setEditTaggedUsers([]);
+  };
+
+  // Modify the renderItem function to make tasks clickable
+  const renderItem = ({ item }: { item: Todo }) => (
+    <TouchableOpacity
+      onPress={() => handleTaskClick(item)}
+      className="bg-white dark:bg-gray-800 rounded-xl p-4 mb-4 shadow-sm"
+    >
+      <ThemedText>{item.text}</ThemedText>
+    </TouchableOpacity>
+  );
+
+  // Add the edit modal component
+  const renderEditModal = () => (
+    <Modal
+      visible={editModal.isVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setEditModal({ isVisible: false, todo: null })}
+    >
+      <View className="flex-1 bg-black/50 justify-end">
+        <View className="bg-white dark:bg-gray-800 rounded-t-3xl">
+          <View className="p-4">
+            <View className="flex-row justify-between items-center mb-4">
+              <ThemedText className="text-xl font-semibold">
+                Edit Task
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setEditModal({ isVisible: false, todo: null })}
+              >
+                <Ionicons name="close" size={24} color={textColor} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Task Text Input */}
+            <TextInput
+              className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 mb-4"
+              style={{ color: textColor }}
+              value={editText}
+              onChangeText={setEditText}
+              placeholder="Task description"
+              placeholderTextColor={placeholderColor}
+            />
+
+            {/* Short Note Input */}
+            <View className="mb-4">
+              <ThemedText className="text-base mb-2">Short Notee</ThemedText>
+              <TextInput
+                className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 min-h-[80px]"
+                style={{ color: textColor }}
+                value={editNote}
+                onChangeText={setEditNote}
+                multiline
+                placeholder="Add a note... Use @ to tag users"
+                placeholderTextColor={placeholderColor}
+              />
+              {/* Tagged Users Pills */}
+              {editTaggedUsers.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="flex-row mt-2"
+                >
+                  {editTaggedUsers.map((userId) => {
+                    const user = availableUsers.find((u) => u.id === userId);
+                    return (
+                      <View
+                        key={userId}
+                        className="flex-row items-center bg-blue-100 dark:bg-blue-800 rounded-full px-3 py-1 mr-2"
+                      >
+                        <ThemedText className="text-sm">
+                          {user?.username}
+                        </ThemedText>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setEditTaggedUsers((tags) =>
+                              tags.filter((id) => id !== userId)
+                            )
+                          }
+                          className="ml-2"
+                        >
+                          <Ionicons
+                            name="close-circle"
+                            size={16}
+                            color={textColor}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* Date, Time, Priority, Category selections... */}
+            {/* (Keep existing selection UI but use edit state variables) */}
+
+            {/* Update Button */}
+            <TouchableOpacity
+              onPress={updateTodo}
+              className="bg-blue-500 p-3 rounded-lg mt-4"
+            >
+              <ThemedText className="text-white text-center font-semibold">
+                Update Task
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <SafeAreaView className="flex-1">
       <ThemedView className="flex-1 p-5">
@@ -645,6 +884,7 @@ export default function HomeScreen() {
 
         {renderCalendar()}
       </ThemedView>
+      {renderEditModal()}
     </SafeAreaView>
   );
 }
